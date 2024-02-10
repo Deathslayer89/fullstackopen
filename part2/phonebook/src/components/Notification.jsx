@@ -1,7 +1,7 @@
 
 const successStyle = {
   color: 'green',
-  background: 'lightgrey',
+  background: 'white',
   font_size: 20,
   border_style: 'solid',
   border_radius: 5,
@@ -11,7 +11,7 @@ const successStyle = {
 
 const errorStyle = {
   color: 'red',
-  background: 'lightgrey',
+  background: 'white',
   font_size: 20,
   border_style: 'solid',
   border_radius: 5,
@@ -24,7 +24,7 @@ const Notification = ({ message }) => {
       return null
     }
 
-    if (message.includes('ERROR')){
+    if (message.includes('error')){
       return (
         <div style={errorStyle} className="error">
           {message}
@@ -39,4 +39,4 @@ const Notification = ({ message }) => {
     }
   }
 
-export default Notification
+export default Notification;

@@ -1,113 +1,189 @@
-/* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
-import Filter from "./components/Filter";
-import PersonForm from "./components/PersonForm";
-import Persons from "./components/Persons";
-import personService from "./services/person";
+import personServices from "./services/person";
 import Notification from "./components/Notification";
+import Filter from './components/Filter.jsx'
+const Heading = ({ text }) => {
+  return <h2>{text}</h2>;
+};
+
+const Part = ({ text, value, handleNewChange }) => {
+  return (
+    <div>
+      {text} <input value={value} onChange={handleNewChange} />
+    </div>
+  );
+};
+
+const Button = ({ type, text, handleNewChange }) => {
+  return (
+    <button type={type} onClick={handleNewChange}>
+      {text}
+    </button>
+  );
+};
+
+const PersonForm = ({
+  onSubmit,
+  newName,
+  newNumber,
+  handleNewName,
+  handleNewNumber,
+}) => {
+  return (
+    <form onSubmit={onSubmit}>
+      <Part text="name:" value={newName} handleNewChange={handleNewName} />
+      <Part
+        text="number:"
+        value={newNumber}
+        handleNewChange={handleNewNumber}
+      />
+      <Button text="add" type="submit" />
+    </form>
+  );
+};
+
+const Persons = ({ personAfterFilter }) => {
+  return <div>{personAfterFilter}</div>;
+};
 
 const App = () => {
   const [persons, setPersons] = useState([]);
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
-  const [filterIndex, setFilterIndex] = useState("");
-  const [message, setMessage] = useState(null);
+  const [filterName, setFilterName] = useState("");
+  const [changeMessage, setChangeMessage] = useState("");
+
   useEffect(() => {
-    personService.getAll().then((response) => {
-      setPersons(response);
+    personServices.getAll().then((initialResult) => {
+      setPersons(initialResult);
     });
   }, []);
 
-  const handleFilterChange = (e) => {
-    setFilterIndex(e.target.value);
-  };
+  const addPerson = (event) => {
+    event.preventDefault();
+    const newPerson = {
+      name: newName,
+      number: newNumber,
+    };
 
-  const register = (e) => {
-    e.preventDefault();
-    const existingPerson = persons.find((person) => person.name === newName);
-    if (existingPerson) {
-      const updatedPerson = { ...existingPerson, number: newNumber };
+    const checkName = persons.find(
+      (props) => props.name.toLowerCase() === newPerson.name.toLowerCase()
+    );
+    const changedPerson = { ...checkName, number: newNumber };
+
+    if (checkName && checkName.number === newPerson.number) {
+      window.alert(`${newName} is already added to phonebook`);
+    } else if (checkName && checkName.number !== newPerson.number) {
       if (
         window.confirm(
-          `${newName} already in the phonebook, replace the old number with a new one`
+          `${newName} is already added to phonebook, replace the old number with a new one?`
         )
       ) {
-        console.log(existingPerson, updatedPerson);
-        personService
-          .update(existingPerson.id, updatedPerson)
-          .then((response) => {
-            console.log(response);
+        personServices
+          .updatePerson(checkName.id, changedPerson)
+          .then((returnedPerson) => {
             setPersons(
-              persons.map((person) =>
-                person.id !== updatedPerson.id ? person : updatedPerson
-              )
+              persons.map((n) => (n.id !== checkName.id ? n : returnedPerson))
             );
-          }).catch((error)=>{
-            console.log(error)
-            setPersons(persons.filter(person => person.id !== updatedPerson.id))
-            
-            setMessage(
-              `[ERROR] ${updatedPerson.name} was already deleted from server`
-            )
+            setNewName("");
+            setNewNumber("");
             setTimeout(() => {
-              setMessage(null)
-            }, 5000)
+              setChangeMessage(`number of ${newName} is changed`);
+            }, 5000);
           })
+          .catch((error) => {
+            setChangeMessage(
+              `Information of ${newName} has already been removed from server`
+            );
+          });
       }
     } else {
-      const newRecord = { name: newName, number: newNumber };
-
-      personService.create(newRecord).then((response) => {
-        response;
-        setPersons(persons.concat(response));
-      });
-    }
-    setNewName("");
-    setNewNumber("");
-    setMessage(`${newName} was successfully updated`);
-    setTimeout(() => {
-      setMessage(null);
-    }, 5000);
-  };
-
-  const removePerson = (id) => {
-    const person = persons.filter((person) => person.id === id)[0];
-    console.log(id, person);
-    if (window.confirm(`Delete ${person.name} ?`)) {
-      personService
-        .remove(id)
-        .then((response) => {
-          console.log(response);
-          setPersons(persons.filter((person) => person.id !== id));
-        })
-        .catch((err) => {
-          console.log(err);
-          setMessage(`[ERROR] ${err.response.data.error}`);
+      personServices
+        .create(newPerson)
+        .then((returnedPerson) => {
+          setPersons(persons.concat(returnedPerson));
+          setNewName("");
+          setNewNumber("");
+          setChangeMessage(`Successfully added ${newName}`);
           setTimeout(() => {
-            setMessage(null);
+            setChangeMessage(null);
           }, 5000);
+        })
+        .catch((error) => {
+          setChangeMessage(`[error] ${error.response.data.error}`);
         });
     }
   };
-  const filteredPersons = persons.filter((person) =>
-    person.name.toLowerCase().includes(filterIndex.toLowerCase())
-  );
+
+  const deletePerson = (id) => {
+    const person = persons.find((n) => n.id === id);
+    if (window.confirm(`Delete ${person.name} ?`)) {
+      personServices.getDeletePerson(id);
+      setPersons(persons.filter((persons) => persons.id !== id));
+    }
+  };
+
+  const handleNewName = (event) => {
+    setNewName(event.target.value);
+  };
+
+  const handleNewNumber = (event) => {
+    setNewNumber(event.target.value);
+  };
+
+  const handleNewFilter = (event) => {
+    setFilterName(event.target.value);
+  };
+
+  const filter = persons.map((props) =>
+    props.name.toLowerCase().includes(filterName.toLowerCase())
+  )
+    ? persons.filter((props) =>
+        props.name.toLowerCase().includes(filterName.toLowerCase())
+      )
+    : persons;
+
+  const People = ({ name, number, id }) => {
+    return (
+      <li>
+        {name} {number}{" "}
+        <Button
+          text="delete"
+          type="submit"
+          handleNewChange={() => deletePerson(id)}
+        />
+      </li>
+    );
+  };
+
+  const personAfterFilter = filter.map((props) => (
+    <People
+      key={props.id}
+      name={props.name}
+      number={props.number}
+      id={props.id}
+    />
+  ));
 
   return (
     <div>
-      <h2>Phonebook</h2>
-      <Notification message={message} />
-      <Filter value={filterIndex} onChange={handleFilterChange} />
-      <h3>Add a new</h3>
-      <PersonForm
-        onSubmit={register}
-        name={newName}
-        onNameChange={(e) => setNewName(e.target.value)}
-        number={newNumber}
-        onNumberChange={(e) => setNewNumber(e.target.value)}
+      <Heading text="Phonebook" />
+      <Notification message={changeMessage} />
+      <Filter
+        text="filter shown with"
+        value={filterName}
+        handleNewChange={handleNewFilter}
       />
-      <h2>Numbers</h2>
-      <Persons persons={filteredPersons} removePerson={removePerson} />
+      <Heading text="add a new" />
+      <PersonForm
+        onSubmit={addPerson}
+        newName={newName}
+        newNumber={newNumber}
+        handleNewName={handleNewName}
+        handleNewNumber={handleNewNumber}
+      />
+      <Heading text="Numbers" />
+      <Persons personAfterFilter={personAfterFilter} />
     </div>
   );
 };
